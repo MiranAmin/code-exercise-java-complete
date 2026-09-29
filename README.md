@@ -1,108 +1,109 @@
-## Coding Assessment Tasks
+# Snip — URL Shortener
 
-### Intro
-This is a URL shortener that has been created by a junior engineer. Your task is to review the solution, check that it works, and find any errors they may have made, as well as complete the fixes and TODOs listed below.
+A Java Spring Boot and React application using SQLite to store shortened URLs.
 
-This solution has been pre-seeded with data in the database already.
+## Requirements addressed
 
-Note that these are not necessarily in the order you will need to address them.
+- **Fix deletion:** delete the requested alias and report whether it existed.
+- **Generate aliases:** create seven-character alphanumeric aliases, retrying collisions up to ten total attempts.
+- **Display URLs:** show short links, original URLs, and delete buttons in the frontend.
+- **Add pagination:** return page metadata from the backend and provide Previous/Next controls in the UI.
+- **Sort by creation date:** order by `created_at DESC, id DESC`, subject to the timestamp limitation below.
+- **Docker setup:** connect the frontend and backend through Compose and persist SQLite in a named volume.
+- **Documentation:** replace the original assessment README with this summary and the updated API contract.
 
-### Fixes
+## Problems found and fixed
 
-- **Fix Delete Behavior:** The client has reported strange behavior when clicking on delete on a URL. Investigate and fix the issue.
-- **Generate Alias:** Implement the `generateAlias` function.
-- **UI Implementation:** Build out the UI to display the URLs on the main page.
+- The original delete implementation created and removed a temporary record, leaving the requested URL untouched. It now deletes the requested alias directly.
+- The creation endpoint returned an empty response without calling the service. It now saves the URL and returns its details with `201 Created`.
+- Alias generation was a placeholder. Generated aliases now retry when insertion detects a duplicate, while duplicate custom aliases return an error. Database uniqueness handles collisions without relying on a separate existence check.
+- Custom aliases now use an explicit ASCII format and reject reserved route names: `urls`, `shorten`, and `error`.
+- The URL table was a placeholder, and the frontend expected an unpaginated array. The table and API client now consume the paginated response.
+- Failed creation no longer clears the form. Deleting the latest created URL clears its result banner. Both successful creation and deletion reload the first page.
+- The redirect test's name and expected status disagreed with the endpoint. Both now reflect `302 Found`.
 
-### TODO
+## Known limitations and verification
 
-- Add paging for retrieval of the URLs.
-- Sort URLs by their creation date.
-- Create the Docker commands to run the solution.
-- Replace this README with an appropriate one.
+- **Timestamp precision:** timestamps retain the existing ISO text format. Sorting can misorder values within the same second when fractional precision differs. This edge case was deliberately left unresolved.
+- **Concurrent changes:** page contents and totals use separate queries, so they may briefly disagree if another request changes the data between queries.
+- **Frontend testing:** automated frontend test files were removed; verification was manual.
 
----
+The backend build and tests completed successfully with `mvn install`. Creation, listing, redirects, duplicate custom aliases, pagination, deletion, and persistence across Compose shutdown/startup were manually verified.
 
-# Snip – URL Shortener
+## Run
 
-A full-stack URL shortener built with **Java Spring Boot** (backend) and **React + TypeScript** (frontend), containerized with Docker.
+With Docker running, execute from the repository root:
 
----
-
-## Architecture
-
+```sh
+docker compose up --build -d
 ```
-frontend/      React + TypeScript (Vite)
-backend/       Java Spring Boot Web API + SQLite
-docker-compose.yml       Orchestrates both services
-```
 
-The frontend proxies API calls through Nginx in production, so there are no CORS concerns once containerized. In development, Vite's dev server proxies to the local API.
+Open [http://localhost:3000](http://localhost:3000). A new database volume starts empty; saved URLs persist in the named volume.
 
----
+## Updated API contract
 
-## API Reference
+All endpoints are available through `http://localhost:3000` when using Compose.
 
-The API exposes the same contract expected by the existing frontend.
+| Method | Endpoint | Responses |
+| --- | --- | --- |
+| `POST` | `/shorten` | `201` with URL details; `400` for invalid input or a duplicate custom alias; `500` if generated-alias attempts are exhausted. |
+| `GET` | `/urls?page=0&size=10` | `200` with a page of URLs; `400` for invalid parameters. |
+| `GET` | `/{alias}` | `302` with the destination in the `Location` header; `404` if missing. |
+| `DELETE` | `/{alias}` | `204` with no body; `404` if missing. |
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/shorten` | Create a shortened URL |
-| `GET` | `/urls` | List all shortened URLs |
-| `GET` | `/{alias}` | Redirect to the full URL |
-| `DELETE` | `/{alias}` | Delete a shortened URL |
+### Create a URL
 
-### POST /shorten
+`POST /shorten`, with `Content-Type: application/json`:
 
 ```json
-// Request
 {
-  "fullUrl": "https://example.com/very/long/path",
-  "customAlias": "my-alias"   // optional
+  "fullUrl": "https://example.com/long/path",
+  "customAlias": "my-alias"
 }
+```
 
-// Response 201
+The destination must be an absolute HTTP or HTTPS URL. `customAlias` is optional; missing or blank values trigger generation. Custom aliases are trimmed, case-sensitive, and limited to 2–64 ASCII letters, digits, or hyphens. The names `urls`, `shorten`, and `error` are reserved.
+
+Response (`201`):
+
+```json
 {
+  "shortUrl": "http://localhost:3000/my-alias",
   "alias": "my-alias",
-  "fullUrl": "https://example.com/very/long/path",
-  "shortUrl": "http://localhost:8080/my-alias"
+  "fullUrl": "https://example.com/long/path"
 }
 ```
 
-Returns `400` if the URL is invalid, the alias is malformed, or the alias is already taken.
-
-### GET /urls
+Validation and alias errors return an error message, for example:
 
 ```json
-// Response 200
-[
-  {
-    "alias": "my-alias",
-    "fullUrl": "https://example.com/very/long/path",
-    "shortUrl": "http://localhost:8080/my-alias"
-  }
-]
+{
+  "error": "The alias 'my-alias' is already taken."
+}
 ```
 
-### GET /{alias}
+### List URLs
 
-Returns `302 Redirect` to the full URL, or `404` if the alias doesn't exist.
+`GET /urls?page=0&size=10`
 
-### DELETE /{alias}
+`page` starts at zero and defaults to `0`. `size` defaults to `10` and must be between `1` and `100`.
 
-Returns `204 No Content` on success, `404` if alias not found.
+The response is now a page object rather than an array (`200`):
 
----
+```json
+{
+  "items": [
+    {
+      "alias": "my-alias",
+      "fullUrl": "https://example.com/long/path",
+      "shortUrl": "http://localhost:3000/my-alias"
+    }
+  ],
+  "page": 0,
+  "size": 10,
+  "totalItems": 1,
+  "totalPages": 1
+}
+```
 
-## Design Decisions & Assumptions
-
-**Persistence** - SQLite via JDBC. The database file path is configurable via the `DATABASE_PATH` environment variable and is volume-mounted in Docker so data survives container restarts.
-
-**Alias validation** - Aliases must be 2-64 characters, containing only letters, numbers, and hyphens. This mirrors typical URL shortener conventions and avoids characters that are awkward in URLs.
-
-**Random alias generation** - 
-
-**Error handling** - Invalid input and domain errors are translated into JSON error responses like `{ "error": "..." }`.
-
-**Testing** - The backend includes service-level tests and can be extended with integration tests. The frontend includes React component tests and service-level API tests.
-
-**Frontend** - The hosted frontend uses Nginx to proxy `/shorten`, `/urls`, and alias requests to the API, so the same Docker setup works without CORS issues.
+Pages beyond the available records return empty `items` while preserving the requested page and database totals. An empty database has zero total items and pages.

@@ -332,6 +332,18 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
 .actions-cell { text-align: right; width: 80px; }
 
 /* ── Empty state ─────────────────────────────────── */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .empty-state {
   padding: 32px 0 8px;
   text-align: center;

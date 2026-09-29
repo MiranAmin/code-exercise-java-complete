@@ -1,6 +1,10 @@
-import type { ShortenUrlRequest, ShortenUrlResponse, UrlListItem } from '../types/api';
+import type {
+  ShortenUrlRequest,
+  ShortenUrlResponse,
+  UrlPageResponse,
+} from "../types/api";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -13,27 +17,31 @@ async function handleResponse<T>(res: Response): Promise<T> {
     }
     throw new Error(message);
   }
+
   // 204 No Content has no body
   if (res.status === 204) return undefined as T;
+
   return res.json() as Promise<T>;
 }
 
 export const api = {
   shorten(request: ShortenUrlRequest): Promise<ShortenUrlResponse> {
     return fetch(`${API_BASE}/shorten`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     }).then((r) => handleResponse<ShortenUrlResponse>(r));
   },
 
-  listAll(): Promise<UrlListItem[]> {
-    return fetch(`${API_BASE}/urls`).then((r) => handleResponse<UrlListItem[]>(r));
+  listAll(page = 0, size = 10): Promise<UrlPageResponse> {
+    return fetch(`${API_BASE}/urls?page=${page}&size=${size}`).then((r) =>
+      handleResponse<UrlPageResponse>(r),
+    );
   },
 
   delete(alias: string): Promise<void> {
     return fetch(`${API_BASE}/${encodeURIComponent(alias)}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }).then((r) => handleResponse<void>(r));
   },
 };

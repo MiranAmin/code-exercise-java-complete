@@ -7,20 +7,32 @@ describe('api service', () => {
   });
 
   it('shorten sends POST to /shorten with correct body', async () => {
-    const mockResponse = { alias: 'abc', fullUrl: 'https://ex.com', shortUrl: 'http://host/abc' };
+    const mockResponse = {
+      alias: 'abc',
+      fullUrl: 'https://ex.com',
+      shortUrl: 'http://host/abc',
+    };
+
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 201,
       json: async () => mockResponse,
     } as Response);
 
-    const result = await api.shorten({ fullUrl: 'https://ex.com', customAlias: 'abc' });
+    const result = await api.shorten({
+      fullUrl: 'https://ex.com',
+      customAlias: 'abc',
+    });
 
     expect(fetch).toHaveBeenCalledWith('/shorten', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullUrl: 'https://ex.com', customAlias: 'abc' }),
+      body: JSON.stringify({
+        fullUrl: 'https://ex.com',
+        customAlias: 'abc',
+      }),
     }));
+
     expect(result).toEqual(mockResponse);
   });
 
@@ -31,20 +43,30 @@ describe('api service', () => {
       json: async () => ({ error: 'Alias already taken.' }),
     } as Response);
 
-    await expect(api.shorten({ fullUrl: 'https://ex.com', customAlias: 'taken' }))
-      .rejects.toThrow('Alias already taken.');
+    await expect(
+        api.shorten({
+          fullUrl: 'https://ex.com',
+          customAlias: 'taken',
+        })
+    ).rejects.toThrow('Alias already taken.');
   });
 
-  it('listAll sends GET to /urls', async () => {
+  it('listAll sends GET to /urls with pagination', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => [],
+      json: async () => ({
+        items: [],
+        page: 0,
+        size: 10,
+        totalItems: 0,
+        totalPages: 0,
+      }),
     } as Response);
 
     await api.listAll();
 
-    expect(fetch).toHaveBeenCalledWith('/urls');
+    expect(fetch).toHaveBeenCalledWith('/urls?page=0&size=10');
   });
 
   it('delete sends DELETE to /{alias}', async () => {
@@ -56,7 +78,10 @@ describe('api service', () => {
 
     await api.delete('my-alias');
 
-    expect(fetch).toHaveBeenCalledWith('/my-alias', expect.objectContaining({ method: 'DELETE' }));
+    expect(fetch).toHaveBeenCalledWith(
+        '/my-alias',
+        expect.objectContaining({ method: 'DELETE' })
+    );
   });
 
   it('delete throws on 404', async () => {
@@ -67,6 +92,6 @@ describe('api service', () => {
     } as Response);
 
     await expect(api.delete('ghost'))
-      .rejects.toThrow("No URL found for alias 'ghost'.");
+        .rejects.toThrow("No URL found for alias 'ghost'.");
   });
 });

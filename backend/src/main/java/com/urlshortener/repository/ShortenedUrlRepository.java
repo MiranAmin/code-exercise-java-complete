@@ -1,12 +1,12 @@
 package com.urlshortener.repository;
 
+import com.urlshortener.exception.DuplicateAliasException;
 import com.urlshortener.model.UrlListItem;
 import jakarta.annotation.PostConstruct;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.sql.ResultSet;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -30,17 +30,16 @@ public class ShortenedUrlRepository {
                 + ")");
     }
 
-    public boolean existsByAlias(String alias) {
-        Integer count = jdbc.queryForObject(
-                "SELECT COUNT(1) FROM shortened_urls WHERE alias = ?",
-                Integer.class,
-                alias);
-        return count != null && count > 0;
-    }
-
     public void save(String alias, String fullUrl, Instant createdAt) {
-        jdbc.update("INSERT INTO shortened_urls (alias, full_url, created_at) VALUES (?, ?, ?)",
+        // skip alias conflicts but show other database failures
+        int rows = jdbc.update("""
+                        INSERT INTO shortened_urls (alias, full_url, created_at) VALUES (?, ?, ?)
+                        ON CONFLICT(alias) DO NOTHING
+                        """,
                 alias, fullUrl, createdAt.toString());
+        if (rows == 0) {
+            throw new DuplicateAliasException(alias);
+        }
     }
 
     public Optional<String> findFullUrlByAlias(String alias) {
@@ -50,9 +49,22 @@ public class ShortenedUrlRepository {
         return results.stream().findFirst();
     }
 
-    public List<UrlListItem> findAll(String baseUrl) {
-        return jdbc.query("SELECT alias, full_url FROM shortened_urls",
-                urlListItemMapper(baseUrl));
+    public List<UrlListItem> findAll(String baseUrl, int size, long offset) {
+        return jdbc.query(
+                """
+                SELECT alias, full_url
+                FROM shortened_urls
+                ORDER BY created_at DESC, id DESC
+                LIMIT ? OFFSET ?
+                """,
+                urlListItemMapper(baseUrl),
+                size,
+                offset
+        );
+    }
+
+    public long count() {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM shortened_urls", Long.class);
     }
 
     public boolean deleteByAlias(String alias) {
@@ -61,10 +73,12 @@ public class ShortenedUrlRepository {
     }
 
     private RowMapper<UrlListItem> urlListItemMapper(String baseUrl) {
-        return (ResultSet rs, int rowNum) -> new UrlListItem(
+        return (rs, rowNum) -> new UrlListItem(
                 rs.getString("alias"),
                 rs.getString("full_url"),
                 baseUrl + "/" + rs.getString("alias")
         );
     }
+
+
 }

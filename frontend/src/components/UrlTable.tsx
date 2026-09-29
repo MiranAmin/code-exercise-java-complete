@@ -6,13 +6,44 @@ interface UrlTableProps {
 }
 
 export function UrlTable({ urls, onDelete }: UrlTableProps) {
-  // TODO: Build URL table UI and wire delete actions.
-  void urls;
-  void onDelete;
+  if (urls.length === 0) {
+    return (
+      <div className="empty-state">
+        <p>No shortened URLs yet.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="empty-state">
-      <p>TODO: Display shortened URLs here.</p>
+    <div className="url-table-wrapper">
+      <table className="url-table" aria-label="Shortened URLs">
+        <thead>
+          <tr>
+            <th scope="col">Short URL</th>
+            <th scope="col">Original URL</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {urls.map((url) => (
+            <tr key={url.alias}>
+              <td>
+                <a className="short-url-link" href={url.shortUrl} target="_blank" rel="noopener noreferrer">
+                  {url.shortUrl}
+                </a>
+              </td>
+              <td>
+                <span className="full-url" title={url.fullUrl}>{url.fullUrl}</span>
+              </td>
+              <td className="actions-cell">
+                <button type="button" className="btn-danger" aria-label={`Delete ${url.alias}`} onClick={() => onDelete(url.alias)}>
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

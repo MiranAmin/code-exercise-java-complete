@@ -1,0 +1,18 @@
+services:
+  api:
+    build: ./backend
+    environment:
+      DATABASE_PATH: /data/urlshortener.db
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+    volumes:
+      - url-data:/data
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  url-data:

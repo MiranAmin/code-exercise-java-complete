@@ -18,3 +18,11 @@ export interface UrlListItem {
 export interface ApiError {
   error: string;
 }
+
+export interface UrlPageResponse {
+  items: UrlListItem[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+}

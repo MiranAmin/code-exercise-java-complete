@@ -5,9 +5,12 @@ backend/target/
 # .NET
 backend/**/bin/
 backend/**/obj/
+
+# SQLite
 backend/**/*.db
 backend/**/*.db-shm
 backend/**/*.db-wal
+urlshortener.db
 
 # Node
 frontend/node_modules/
@@ -29,5 +32,5 @@ frontend/junit.xml
 .DS_Store
 Thumbs.db
 
-# other
+# Other
 c-sharp
