@@ -1,3 +1,7 @@
+# Java build output and logs
+backend/target/
+*.log
+
 # .NET
 backend/**/bin/
 backend/**/obj/
@@ -8,6 +12,13 @@ backend/**/*.db-wal
 # Node
 frontend/node_modules/
 frontend/dist/
+
+# Generated test reports and coverage
+frontend/coverage/
+frontend/test-results/
+frontend/test-reports/
+frontend/playwright-report/
+frontend/junit.xml
 
 # IDE
 .idea/
